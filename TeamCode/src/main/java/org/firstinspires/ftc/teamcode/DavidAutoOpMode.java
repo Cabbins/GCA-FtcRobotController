@@ -94,6 +94,15 @@ public class DavidAutoOpMode extends OpMode{
         SHOOT,
         DONE,
         WAIT,
+        GET,
+        ROTATE2,
+        STRAFE,
+        BACK,
+        GET2,
+        ROTATE3,
+        SHOOT2,
+        WAIT2,
+        DIVERT,
     }
     private AutoState autoState = AutoState.DRIVE;
 
@@ -191,7 +200,7 @@ public class DavidAutoOpMode extends OpMode{
     @Override
     public void loop() {
         switch (autoState) {
-            case DRIVE:
+            /*case DRIVE:
                 mecanumDrive(1,0, 0);
                 if (autoTimer.seconds() > 1.1) {
                     mecanumDrive(0,0, 0);
@@ -225,6 +234,119 @@ public class DavidAutoOpMode extends OpMode{
                     autoTimer.reset();
                     autoState = AutoState.DONE;
                 }
+            case DONE:
+                mecanumDrive(0, 0, 0);
+                break;*/
+            case DRIVE:
+                mecanumDrive(1,0, 0);
+                diverter.setPosition(0);
+                if (autoTimer.seconds() > 1.1) {
+                    mecanumDrive(0,0, 0);
+                    spinUpLauncher();
+                    autoTimer.reset();
+                    autoState = AutoState.ROTATE;
+                }
+                break;
+            case ROTATE:
+                mecanumDrive(0,0, -1);
+                if (autoTimer.seconds() > 0.3) {
+                    mecanumDrive(0,0, 0);
+                    autoTimer.reset();
+                    autoState = AutoState.WAIT;
+                }
+                break;
+            case WAIT:
+                if (autoTimer.seconds() > 1.5) {
+                    autoTimer.reset();
+                    autoState = AutoState.SHOOT;
+                }
+                break;
+            case SHOOT:
+                shoot();
+                intake.setPower(1);
+                if (autoTimer.seconds() > 3){
+                    stopFeeders();
+                    autoTimer.reset();
+                    autoState = AutoState.ROTATE2;
+                }
+                break;
+            case ROTATE2:
+                mecanumDrive(0,0,-1);
+                if (autoTimer.seconds() > 0.2) {
+                    mecanumDrive(0,0,0);
+                    autoTimer.reset();
+                    autoState = AutoState.GET;
+                }
+                break;
+            /*case STRAFE:
+                mecanumDrive(0,-1,0);
+                if (autoTimer.seconds() > 0.2) {
+                    mecanumDrive(0,0,0);
+                    autoTimer.reset();
+                    autoState = AutoState.DONE;
+                }
+                break;*/
+            case GET:
+                mecanumDrive(0.85,0,0);
+                if (autoTimer.seconds() > 0.5) {
+                    mecanumDrive(0,0,0);
+                    autoTimer.reset();
+                    autoState = AutoState.DIVERT;
+                }
+                break;
+            case DIVERT:
+                if (autoTimer.seconds() > 1) {
+                    diverter.setPosition(1);
+                    autoTimer.reset();
+                    autoState = AutoState.WAIT2;
+                }
+                break;
+            case WAIT2:
+                if (autoTimer.seconds() > 1) {
+                    autoTimer.reset();
+                    autoState = AutoState.GET2;
+                }
+                break;
+            case GET2:
+                mecanumDrive(1,0,0);
+                if (autoTimer.seconds() > 0.4) {
+                    mecanumDrive(0,0,0);
+                    autoTimer.reset();
+                    autoState = AutoState.BACK;
+                }
+                break;
+            case BACK:
+                mecanumDrive(-1,0,0);
+                //From 0.8 to 0.75
+                //From 0.75 to 0.7
+                //From 0.7 to 0.75
+                if (autoTimer.seconds() > 0.7) {
+                    mecanumDrive(0,0,0);
+                    autoTimer.reset();
+                    autoState = AutoState.ROTATE3;
+                }
+                break;
+            case ROTATE3:
+                mecanumDrive(0,0,1);
+                //From 0.3 to 0.35
+                //From 0.35 to 0.35
+                //From 0.35 to 0.3
+                if (autoTimer.seconds() > 0.35) {
+                    mecanumDrive(0,0,0);
+                    autoTimer.reset();
+                    autoState = AutoState.SHOOT2;
+                }
+                break;
+            case SHOOT2:
+                shoot();
+                if (autoTimer.seconds() > 3){
+                    stopFeeders();
+                    stopLauncher();
+                    intake.setPower(0);
+                    autoTimer.reset();
+                    autoState = AutoState.DONE;
+                }
+                break;
             case DONE:
                 mecanumDrive(0, 0, 0);
                 break;
@@ -278,6 +400,7 @@ public class DavidAutoOpMode extends OpMode{
                 Servo_Fix_LTimer.reset();
                 leftLaunchState = LaunchState.LAUNCHING;
                 break;
+
             case LAUNCHING:
                 if (Servo_Fix_LTimer.seconds() > FEED_TIME_SECONDS) {
                     leftLaunchState = LaunchState.IDLE;
@@ -324,11 +447,19 @@ public class DavidAutoOpMode extends OpMode{
         Servo_Fix_R.setPower(0);
     }
     void spinUpLauncher() {
-        LShootMotor.setVelocity(1150);
-        RShootMotor.setVelocity(1150);
+        LShootMotor.setVelocity(1140);
+        RShootMotor.setVelocity(1140);
     }
     void stopLauncher() {
         LShootMotor.setVelocity(0);
         RShootMotor.setVelocity(0);
+    }
+    void divertRight(){
+        diverterDirection = DiverterDirection.RIGHT;
+        diverter.setPosition(RIGHT_POSITION);
+    }
+    void divertLeft(){
+        diverterDirection = DiverterDirection.LEFT;
+        diverter.setPosition(LEFT_POSITION);
     }
 }

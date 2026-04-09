@@ -1,32 +1,9 @@
-/*   MIT License
- *   Copyright (c) [2025] [Base 10 Assets, LLC]
- *
- *   Permission is hereby granted, free of charge, to any person obtaining a copy
- *   of this software and associated documentation files (the "Software"), to deal
- *   in the Software without restriction, including without limitation the rights
- *   to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
- *   copies of the Software, and to permit persons to whom the Software is
- *   furnished to do so, subject to the following conditions:
-
- *   The above copyright notice and this permission notice shall be included in all
- *   copies or substantial portions of the Software.
-
- *   THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
- *   IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
- *   FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
- *   AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
- *   LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
- *   OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
- *   SOFTWARE.
- */
-
-
 package org.firstinspires.ftc.teamcode;
 
 import static com.qualcomm.robotcore.hardware.DcMotor.ZeroPowerBehavior.BRAKE;
 
 import com.qualcomm.robotcore.eventloop.opmode.OpMode;
-import com.qualcomm.robotcore.eventloop.opmode.TeleOp;
+import com.qualcomm.robotcore.eventloop.opmode.Autonomous;
 import com.qualcomm.robotcore.hardware.CRServo;
 import com.qualcomm.robotcore.hardware.DcMotor;
 import com.qualcomm.robotcore.hardware.DcMotorEx;
@@ -35,15 +12,9 @@ import com.qualcomm.robotcore.hardware.PIDFCoefficients;
 import com.qualcomm.robotcore.hardware.Servo;
 import com.qualcomm.robotcore.util.ElapsedTime;
 
-/*
- * This file includes a teleop (driver-controlled) file for the goBILDA® Robot in 3 Days for the
- * 2025-2026 FIRST® Tech Challenge season DECODE™!
- */
-
-@TeleOp(name = "DECODE Ri3D", group = "StarterBot")
-//@Disabled
-public class DecodeRi3D extends OpMode {
-    final double FEED_TIME_SECONDS = 0.75; //The feeder servos run this long when a shot is requested.
+@Autonomous
+public class RedDavidAutoOpMode extends OpMode{
+    final double FEED_TIME_SECONDS = 0.5; //The feeder servos run this long when a shot is requested.
     final double STOP_SPEED = 0.0; //We send this power to the servos when we want them to stop.
     final double FULL_SPEED = 1.0;
 
@@ -53,8 +24,8 @@ public class DecodeRi3D extends OpMode {
     final double LAUNCHER_FAR_TARGET_VELOCITY = 1400; //Target velocity for far goal
     final double LAUNCHER_FAR_MIN_VELOCITY = 1375; //minimum required to start a shot for far goal.
 
-    final double LAUNCHER_MEDIUM_TARGET_VELOCITY = 1250;
-    final double LAUNCHER_MEDIUM_MIN_VELOCITY = 1225;
+    final double LAUNCHER_KILLER_TARGET_VELOCITY = 2000;
+    final double LAUNCHER_KILLER_MIN_VELOCITY = 1975;
 
     double launcherTarget = LAUNCHER_CLOSE_TARGET_VELOCITY; //These variables allow
     double launcherMin = LAUNCHER_CLOSE_MIN_VELOCITY;
@@ -74,9 +45,9 @@ public class DecodeRi3D extends OpMode {
     private CRServo Servo_Fix_R = null;
     private Servo diverter = null;
 
-    private Servo light = null;
     ElapsedTime Servo_Fix_LTimer = new ElapsedTime();
     ElapsedTime Servo_Fix_RTimer = new ElapsedTime();
+
 
 
     private enum LaunchState {
@@ -104,7 +75,7 @@ public class DecodeRi3D extends OpMode {
     private enum LauncherDistance {
         CLOSE,
         FAR,
-        MEDIUM;
+        KILLER;
     }
 
     private LauncherDistance launcherDistance = LauncherDistance.CLOSE;
@@ -114,6 +85,26 @@ public class DecodeRi3D extends OpMode {
     double rightFrontPower;
     double leftBackPower;
     double rightBackPower;
+
+    ElapsedTime autoTimer = new ElapsedTime();
+
+    private enum AutoState {
+        DRIVE,
+        ROTATE,
+        SHOOT,
+        DONE,
+        WAIT,
+        GET,
+        ROTATE2,
+        STRAFE,
+        BACK,
+        GET2,
+        ROTATE3,
+        SHOOT2,
+        WAIT2,
+        DIVERT,
+    }
+    private AutoState autoState = AutoState.DRIVE;
 
     /*
      * Code to run ONCE when the driver hits INIT
@@ -133,7 +124,6 @@ public class DecodeRi3D extends OpMode {
         Servo_Fix_L = hardwareMap.get(CRServo.class, "Servo_Fix_L");
         Servo_Fix_R = hardwareMap.get(CRServo.class, "Servo_Fix_R");
         diverter = hardwareMap.get(Servo.class, "Servo_sorting");
-        light = hardwareMap.get(Servo.class, "light");
 
         /*
          * To drive forward, most robots need the motor on one side to be reversed,
@@ -186,9 +176,6 @@ public class DecodeRi3D extends OpMode {
          * Tell the driver that initialization is complete.
          */
         telemetry.addData("Status", "Initialized");
-
-        //Light
-        light.setPosition(1);
     }
 
     /*
@@ -198,17 +185,13 @@ public class DecodeRi3D extends OpMode {
     public void init_loop() {
     }
 
+
     /*
      * Code to run ONCE when the driver hits START
      */
-    @Override
     public void start() {
-        light.setPosition(0.357);
-        intakeState = IntakeState.ON;
-        intake.setPower(1);
-        LShootMotor.setVelocity(launcherTarget);
-        RShootMotor.setVelocity(launcherTarget);
-
+        mecanumDrive(0, 0, 0);
+        autoTimer.reset();
     }
 
     /*
@@ -216,108 +199,158 @@ public class DecodeRi3D extends OpMode {
      */
     @Override
     public void loop() {
-        mecanumDrive(-gamepad1.left_stick_y, gamepad1.left_stick_x, gamepad1.right_stick_x);
-
-        /*
-         * Here we give the user control of the speed of the launcher motor without automatically
-         * queuing a shot.
-         */
-        if (gamepad2.y) {
-            LShootMotor.setVelocity(launcherTarget);
-            RShootMotor.setVelocity(launcherTarget);
-        } else if (gamepad2.b) { // stop flywheel
-            LShootMotor.setVelocity(STOP_SPEED);
-            RShootMotor.setVelocity(STOP_SPEED);
-        }
-
-        if (gamepad2.dpadDownWasPressed()) {
-            switch (diverterDirection){
-                case LEFT:
-                    diverterDirection = DiverterDirection.RIGHT;
-                    diverter.setPosition(RIGHT_POSITION);
-                    break;
-                case RIGHT:
-                    diverterDirection = DiverterDirection.LEFT;
-                    diverter.setPosition(LEFT_POSITION);
-                    break;
-            }
-        }
-
-        if (gamepad2.aWasPressed()){
-            switch (intakeState){
-                case ON:
-                    intakeState = IntakeState.OFF;
+        switch (autoState) {
+            /*case DRIVE:
+                mecanumDrive(1,0, 0);
+                if (autoTimer.seconds() > 1.1) {
+                    mecanumDrive(0,0, 0);
+                    spinUpLauncher();
+                    autoTimer.reset();
+                    autoState = AutoState.ROTATE;
+                }
+                break;
+            case ROTATE:
+                mecanumDrive(0,0, -1);
+                if (autoTimer.seconds() > 0.3) {
+                    mecanumDrive(0,0, 0);
+                    autoTimer.reset();
+                    autoState = AutoState.WAIT;
+                }
+                break;
+            case WAIT:
+                if (autoTimer.seconds() > 1.5) {
+                    autoTimer.reset();
+                    autoState = AutoState.SHOOT;
+                }
+                break;
+            case SHOOT:
+                shoot();
+                intake.setPower(1);
+                shoot();
+                if (autoTimer.seconds() > 3){
+                    stopFeeders();
+                    stopLauncher();
                     intake.setPower(0);
-                    break;
-                case OFF:
-                    intakeState = IntakeState.ON;
-                    intake.setPower(1);
-                    break;
-            }
+                    autoTimer.reset();
+                    autoState = AutoState.DONE;
+                }
+            case DONE:
+                mecanumDrive(0, 0, 0);
+                break;*/
+            case DRIVE:
+                mecanumDrive(1,0, 0);
+                diverter.setPosition(0);
+                if (autoTimer.seconds() > 1.2) {
+                    mecanumDrive(0,0, 0);
+                    spinUpLauncher();
+                    autoTimer.reset();
+                    autoState = AutoState.ROTATE;
+                }
+                break;
+            case ROTATE:
+                mecanumDrive(0,0, 1);
+                if (autoTimer.seconds() > 0.35) {
+                    mecanumDrive(0,0, 0);
+                    autoTimer.reset();
+                    autoState = AutoState.WAIT;
+                }
+                break;
+            case WAIT:
+                if (autoTimer.seconds() > 1.5) {
+                    autoTimer.reset();
+                    autoState = AutoState.SHOOT;
+                }
+                break;
+            case SHOOT:
+                shoot();
+                intake.setPower(1);
+                if (autoTimer.seconds() > 3){
+                    stopFeeders();
+                    autoTimer.reset();
+                    autoState = AutoState.ROTATE2;
+                }
+                break;
+            case ROTATE2:
+                mecanumDrive(0,0,1);
+                if (autoTimer.seconds() > 0.25) {
+                    mecanumDrive(0,0,0);
+                    autoTimer.reset();
+                    autoState = AutoState.GET;
+                }
+                break;
+            /*case STRAFE:
+                mecanumDrive(0,-1,0);
+                if (autoTimer.seconds() > 0.2) {
+                    mecanumDrive(0,0,0);
+                    autoTimer.reset();
+                    autoState = AutoState.DONE;
+                }
+                break;*/
+            case GET:
+                mecanumDrive(0.85,0,0);
+                if (autoTimer.seconds() > 0.5) {
+                    mecanumDrive(0,0,0);
+                    autoTimer.reset();
+                    autoState = AutoState.DIVERT;
+                }
+                break;
+            case DIVERT:
+                if (autoTimer.seconds() > 1) {
+                    diverter.setPosition(1);
+                    autoTimer.reset();
+                    autoState = AutoState.WAIT2;
+                }
+                break;
+            case WAIT2:
+                if (autoTimer.seconds() > 1) {
+                    autoTimer.reset();
+                    autoState = AutoState.GET2;
+                }
+                break;
+            case GET2:
+                mecanumDrive(1,0,0);
+                if (autoTimer.seconds() > 0.5) {
+                    mecanumDrive(0,0,0);
+                    autoTimer.reset();
+                    autoState = AutoState.BACK;
+                }
+                break;
+            case BACK:
+                mecanumDrive(-1,0,0);
+                //From 0.8 to 0.75
+                //From 0.75 to 0.7
+                //From 0.7 to 0.75
+                if (autoTimer.seconds() > 0.9) {
+                    mecanumDrive(0,0,0);
+                    autoTimer.reset();
+                    autoState = AutoState.ROTATE3;
+                }
+                break;
+            case ROTATE3:
+                mecanumDrive(0,0,-1);
+                //From 0.3 to 0.35
+                //From 0.35 to 0.35
+                //From 0.35 to 0.3
+                if (autoTimer.seconds() > 0.3) {
+                    mecanumDrive(0,0,0);
+                    autoTimer.reset();
+                    autoState = AutoState.SHOOT2;
+                }
+                break;
+            case SHOOT2:
+                shoot();
+                if (autoTimer.seconds() > 3){
+                    stopFeeders();
+                    stopLauncher();
+                    intake.setPower(0);
+                    autoTimer.reset();
+                    autoState = AutoState.DONE;
+                }
+                break;
+            case DONE:
+                mecanumDrive(0, 0, 0);
+                break;
         }
-        //-----------DUMP-----------
-        if (gamepad2.xWasPressed()){
-            switch (intakeState){
-                case ON:
-                    intakeState = IntakeState.ON;
-                    intake.setPower(-1);
-                    break;
-                case OFF:
-                    intakeState = IntakeState.ON;
-                    intake.setPower(-1);
-                    break;
-            }
-        }
-        //-----------DUMP-----------
-
-        if (gamepad2.dpadUpWasPressed()) {
-            switch (launcherDistance) {
-                case CLOSE:
-                    launcherDistance = LauncherDistance.FAR;
-                    launcherTarget = LAUNCHER_FAR_TARGET_VELOCITY;
-                    launcherMin = LAUNCHER_FAR_MIN_VELOCITY;
-                    light.setPosition(0.666);
-                    break;
-                case FAR:
-                    launcherDistance = LauncherDistance.CLOSE;
-                    launcherTarget = LAUNCHER_CLOSE_TARGET_VELOCITY;
-                    launcherMin = LAUNCHER_CLOSE_MIN_VELOCITY;
-                    light.setPosition(0.357);
-                    break;
-                case MEDIUM:
-                    launcherDistance = LauncherDistance.CLOSE;
-                    launcherTarget = LAUNCHER_CLOSE_TARGET_VELOCITY;
-                    launcherMin = LAUNCHER_CLOSE_MIN_VELOCITY;
-                    light.setPosition(0.357);
-            }
-        }
-
-        if (gamepad2.dpadRightWasPressed()) {
-            switch (launcherDistance) {
-                case CLOSE:
-                case FAR:
-                    launcherDistance = LauncherDistance.MEDIUM;
-                    launcherTarget = LAUNCHER_MEDIUM_TARGET_VELOCITY;
-                    launcherMin = LAUNCHER_MEDIUM_MIN_VELOCITY;
-                    light.setPosition(0.279);
-                    break;
-            }
-        }
-
-        /*
-         * Now we call our "Launch" function.
-         */
-        launchLeft(gamepad2.leftBumperWasPressed());
-        launchRight(gamepad2.rightBumperWasPressed());
-
-
-        /*
-         * Show the state and motor powers
-         */
-        telemetry.addData("State", leftLaunchState);
-        telemetry.addData("launch distance", launcherDistance);
-        telemetry.addData("Left Launcher Velocity", LShootMotor.getVelocity());
-        telemetry.addData("Right Launcher Velocity", RShootMotor.getVelocity());
 
     }
 
@@ -367,6 +400,7 @@ public class DecodeRi3D extends OpMode {
                 Servo_Fix_LTimer.reset();
                 leftLaunchState = LaunchState.LAUNCHING;
                 break;
+
             case LAUNCHING:
                 if (Servo_Fix_LTimer.seconds() > FEED_TIME_SECONDS) {
                     leftLaunchState = LaunchState.IDLE;
@@ -402,5 +436,30 @@ public class DecodeRi3D extends OpMode {
                 }
                 break;
         }
+    }
+
+    void shoot() {
+        Servo_Fix_L.setPower(1.0);
+        Servo_Fix_R.setPower(1.0);
+    }
+    void stopFeeders() {
+        Servo_Fix_L.setPower(0);
+        Servo_Fix_R.setPower(0);
+    }
+    void spinUpLauncher() {
+        LShootMotor.setVelocity(1140);
+        RShootMotor.setVelocity(1140);
+    }
+    void stopLauncher() {
+        LShootMotor.setVelocity(0);
+        RShootMotor.setVelocity(0);
+    }
+    void divertRight(){
+        diverterDirection = DiverterDirection.RIGHT;
+        diverter.setPosition(RIGHT_POSITION);
+    }
+    void divertLeft(){
+        diverterDirection = DiverterDirection.LEFT;
+        diverter.setPosition(LEFT_POSITION);
     }
 }
