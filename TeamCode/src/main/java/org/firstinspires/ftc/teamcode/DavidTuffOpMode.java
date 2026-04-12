@@ -288,7 +288,7 @@ public class DavidTuffOpMode extends OpMode{
                 break;*/
             case GET:
                 mecanumDrive(0.85,0,0);
-                if (autoTimer.seconds() > 0.5) {
+                if (autoTimer.seconds() > 0.45) {
                     mecanumDrive(0,0,0);
                     autoTimer.reset();
                     autoState = AutoState.DIVERT;
@@ -309,7 +309,7 @@ public class DavidTuffOpMode extends OpMode{
                 break;
             case GET2:
                 mecanumDrive(1,0,0);
-                if (autoTimer.seconds() > 0.5) {
+                if (autoTimer.seconds() > 0.45) {
                     mecanumDrive(0,0,0);
                     autoTimer.reset();
                     autoState = AutoState.BACK;
@@ -320,7 +320,7 @@ public class DavidTuffOpMode extends OpMode{
                 //From 0.8 to 0.75
                 //From 0.75 to 0.7
                 //From 0.7 to 0.75
-                if (autoTimer.seconds() > 0.9) {
+                if (autoTimer.seconds() > 0.75) {
                     mecanumDrive(0,0,0);
                     autoTimer.reset();
                     autoState = AutoState.ROTATE3;
@@ -331,7 +331,7 @@ public class DavidTuffOpMode extends OpMode{
                 //From 0.3 to 0.35
                 //From 0.35 to 0.35
                 //From 0.35 to 0.3
-                if (autoTimer.seconds() > 0.3) {
+                if (autoTimer.seconds() > 0.28) {
                     mecanumDrive(0,0,0);
                     autoTimer.reset();
                     autoState = AutoState.SHOOT2;

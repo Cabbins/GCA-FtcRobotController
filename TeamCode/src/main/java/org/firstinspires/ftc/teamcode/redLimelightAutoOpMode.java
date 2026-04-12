@@ -23,12 +23,15 @@ import java.util.List;
  *            keep the april tag in the camera view
  *   Phase 2: Strafe/turn to reach TX_TARGET
  *
+ *  ta (target area %) filters out weak/false detections.
+ *  tl (pipeline latency) is displayed in telemetry for tuning.
+ *
  *  Every 2 cycles: turn ~90°, drive forward with intake + diverter,
  *  drive forward more, then reverse back and re-align.
  * ============================================================
  */
 @Autonomous
-public class ClaudeAutoOpMode extends LinearOpMode {
+public class  redLimelightAutoOpMode extends LinearOpMode {
 
     // ─── Drive Motors ───────────────────────────────────────────────────────────
     private DcMotor FRmotor, FLmotor, BRmotor, BLmotor;
@@ -46,7 +49,7 @@ public class ClaudeAutoOpMode extends LinearOpMode {
 
     // ─── Limelight ──────────────────────────────────────────────────────────────
     private Limelight3A limelight;
-    private static final int LIMELIGHT_PIPELINE = 8;
+    private static final int LIMELIGHT_PIPELINE = 9;
 
     // ─── Tunable Constants ──────────────────────────────────────────────────────
 
@@ -65,10 +68,16 @@ public class ClaudeAutoOpMode extends LinearOpMode {
     private static final double INTAKE_RIGHT_DWELL_SEC  = 1.0;
 
     // Limelight alignment targets
-    private static final double TX_TARGET          = -4.1;
+    private static final double TX_TARGET          = -6.1;
     private static final double TX_DEADBAND        = .5;
-    private static final double TY_TARGET          = 1.8;
+    private static final double TY_TARGET          = -3.52;
     private static final double TY_DEADBAND        = .3;
+
+    // ta (target area %) — ignore detections smaller than this
+    private static final double TA_MIN             = 0.5;   // Minimum area % to trust a detection
+
+    // tl (pipeline latency) — max acceptable latency in ms
+    private static final double TL_MAX             = 100.0; // Ignore results older than this (ms)
 
     // Phase 1: Drive fwd/back to TY_TARGET
     private static final double ALIGN_DRIVE_KP             = .3;
@@ -173,7 +182,6 @@ public class ClaudeAutoOpMode extends LinearOpMode {
                 telemetry.update();
                 fieldPickupManeuver();
             } else {
-                // Normal: strafe to collect, collect, strafe back
                 telemetry.addLine("Moving to collection point...");
                 telemetry.update();
                 strafeToCollectionPoint();
@@ -248,11 +256,21 @@ public class ClaudeAutoOpMode extends LinearOpMode {
     }
 
     // ========================================================================
+    //  IS RESULT GOOD?  (valid + ta above minimum + latency below max)
+    // ========================================================================
+    private boolean isResultGood(LLResult result) {
+        if (result == null || !result.isValid()) return false;
+        if (result.getTa() < TA_MIN) return false;
+        if (result.getStaleness() > TL_MAX) return false;
+        return true;
+    }
+
+    // ========================================================================
     //  CAN SEE TARGET?
     // ========================================================================
     private boolean canSeeTarget() {
         LLResult result = limelight.getLatestResult();
-        return result != null && result.isValid();
+        return isResultGood(result);
     }
 
     // ========================================================================
@@ -298,9 +316,13 @@ public class ClaudeAutoOpMode extends LinearOpMode {
 
             LLResult result = limelight.getLatestResult();
 
-            if (result == null || !result.isValid()) {
+            if (!isResultGood(result)) {
                 setMecanumPower(0, 0, 0);
-                telemetry.addLine("Phase 1: no target — stopped");
+                telemetry.addLine("Phase 1: no good target — stopped");
+                if (result != null) {
+                    telemetry.addData("ta", "%.2f%%  (min %.2f%%)", result.getTa(), TA_MIN);
+                    telemetry.addData("tl", "%.0f ms  (max %.0f ms)", result.getStaleness(), TL_MAX);
+                }
                 telemetry.update();
                 sleep(50);
                 continue;
@@ -308,6 +330,8 @@ public class ClaudeAutoOpMode extends LinearOpMode {
 
             double tx = result.getTx();
             double ty = result.getTy();
+            double ta = result.getTa();
+            double tl = result.getStaleness();
             double tyError = ty - TY_TARGET;
 
             boolean atDistance = Math.abs(tyError) < TY_DEADBAND;
@@ -315,6 +339,8 @@ public class ClaudeAutoOpMode extends LinearOpMode {
             telemetry.addData("Phase", "1 — Distance");
             telemetry.addData("ty", "%.2f  (target %.2f)", ty, TY_TARGET);
             telemetry.addData("tx", "%.2f  (tracking)", tx);
+            telemetry.addData("ta", "%.2f%%", ta);
+            telemetry.addData("tl", "%.0f ms", tl);
             telemetry.addData("tyError", "%.2f", tyError);
             telemetry.addData("At distance", atDistance);
             telemetry.update();
@@ -347,21 +373,29 @@ public class ClaudeAutoOpMode extends LinearOpMode {
 
             LLResult result = limelight.getLatestResult();
 
-            if (result == null || !result.isValid()) {
+            if (!isResultGood(result)) {
                 setMecanumPower(0, 0, 0);
-                telemetry.addLine("Phase 2: no target");
+                telemetry.addLine("Phase 2: no good target");
+                if (result != null) {
+                    telemetry.addData("ta", "%.2f%%  (min %.2f%%)", result.getTa(), TA_MIN);
+                    telemetry.addData("tl", "%.0f ms  (max %.0f ms)", result.getStaleness(), TL_MAX);
+                }
                 telemetry.update();
                 sleep(50);
                 continue;
             }
 
             double tx = result.getTx();
+            double ta = result.getTa();
+            double tl = result.getStaleness();
             double txError = tx - TX_TARGET;
 
             boolean aimed = Math.abs(txError) < TX_DEADBAND;
 
             telemetry.addData("Phase", "2 — Lateral");
             telemetry.addData("tx", "%.2f  (target %.2f)", tx, TX_TARGET);
+            telemetry.addData("ta", "%.2f%%", ta);
+            telemetry.addData("tl", "%.0f ms", tl);
             telemetry.addData("txError", "%.2f", txError);
             telemetry.addData("Aimed", aimed);
             telemetry.update();
@@ -440,11 +474,8 @@ public class ClaudeAutoOpMode extends LinearOpMode {
 
     // ========================================================================
     //  FIELD PICKUP MANEUVER
-    //  Turn ~90°, drive forward, divert, drive forward more with intake,
-    //  then reverse back and turn back to face the target.
     // ========================================================================
     private void fieldPickupManeuver() {
-        // Turn ~90°
         telemetry.addLine("Field pickup: turning...");
         telemetry.update();
         setMecanumPower(0, 0, FIELD_TURN_POWER);
@@ -453,7 +484,6 @@ public class ClaudeAutoOpMode extends LinearOpMode {
 
         if (!opModeIsActive()) return;
 
-        // Drive forward (first segment)
         IntakeMotor.setPower(INTAKE_POWER);
         telemetry.addLine("Field pickup: driving forward...");
         telemetry.update();
@@ -463,7 +493,6 @@ public class ClaudeAutoOpMode extends LinearOpMode {
 
         if (!opModeIsActive()) { IntakeMotor.setPower(0); return; }
 
-        // Activate diverter
         telemetry.addLine("Field pickup: diverting...");
         telemetry.update();
         Servo_sorting.setPosition(SORT_RIGHT_POS);
@@ -471,7 +500,6 @@ public class ClaudeAutoOpMode extends LinearOpMode {
 
         if (!opModeIsActive()) { IntakeMotor.setPower(0); return; }
 
-        // Drive forward more with intake running
         telemetry.addLine("Field pickup: collecting forward...");
         telemetry.update();
         setMecanumPower(FIELD_DRIVE2_POWER, 0, 0);
@@ -483,7 +511,6 @@ public class ClaudeAutoOpMode extends LinearOpMode {
 
         if (!opModeIsActive()) return;
 
-        // Reverse back
         telemetry.addLine("Field pickup: reversing...");
         telemetry.update();
         setMecanumPower(FIELD_REVERSE_POWER, 0, 0);
@@ -492,7 +519,6 @@ public class ClaudeAutoOpMode extends LinearOpMode {
 
         if (!opModeIsActive()) return;
 
-        // Turn back ~90° (opposite direction)
         telemetry.addLine("Field pickup: turning back...");
         telemetry.update();
         setMecanumPower(0, 0, FIELD_TURN_BACK_POWER);
