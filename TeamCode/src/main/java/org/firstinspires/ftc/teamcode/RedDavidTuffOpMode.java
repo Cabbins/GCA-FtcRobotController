@@ -96,13 +96,22 @@ public class RedDavidTuffOpMode extends OpMode{
         WAIT,
         GET,
         ROTATE2,
-        STRAFE,
+        STRAFE1,
         BACK,
         GET2,
         ROTATE3,
         SHOOT2,
         WAIT2,
         DIVERT,
+        ROTATE4,
+        STRAFE2,
+        GET3,
+        DIVERT2,
+        WAIT3,
+        BACK2,
+        GET4,
+        ROTATE5,
+        SHOOT3,
     }
     private AutoState autoState = AutoState.DRIVE;
 
@@ -240,7 +249,7 @@ public class RedDavidTuffOpMode extends OpMode{
             case DRIVE:
                 mecanumDrive(1,0, 0);
                 diverter.setPosition(0);
-                if (autoTimer.seconds() > 1.1) {
+                if (autoTimer.seconds() > 1.2) {
                     mecanumDrive(0,0, 0);
                     spinUpLauncher();
                     autoTimer.reset();
@@ -339,6 +348,94 @@ public class RedDavidTuffOpMode extends OpMode{
                 break;
             case SHOOT2:
                 shoot();
+                diverter.setPosition(0);
+                if (autoTimer.seconds() > 3){
+                    //stopFeeders();
+                    //stopLauncher();
+                    //intake.setPower(0);
+                    autoTimer.reset();
+                    autoState = AutoState.ROTATE4;
+                }
+                break;
+            //If it does not work cut till here
+            case ROTATE4:
+                mecanumDrive(0,0,1);
+                if (autoTimer.seconds() > 0.25) {
+                    mecanumDrive(0,0,0);
+                    autoTimer.reset();
+                    autoState = AutoState.STRAFE1;
+                }
+                break;
+            case STRAFE1:
+                mecanumDrive(0,1,0);
+                if (autoTimer.seconds() > 1) {
+                    mecanumDrive(0,0,0);
+                    autoTimer.reset();
+                    autoState = AutoState.GET3;
+                }
+                break;
+            case GET3:
+                mecanumDrive(0.85,0,0);
+                if (autoTimer.seconds() > 0.43) {
+                    mecanumDrive(0,0,0);
+                    autoTimer.reset();
+                    autoState = AutoState.DIVERT2;
+                }
+                break;
+            case DIVERT2:
+                if (autoTimer.seconds() > 1) {
+                    diverter.setPosition(1);
+                    autoTimer.reset();
+                    autoState = AutoState.WAIT3;
+                }
+                break;
+            case WAIT3:
+                if (autoTimer.seconds() > 1) {
+                    autoTimer.reset();
+                    autoState = AutoState.GET4;
+                }
+                break;
+            case GET4:
+                mecanumDrive(1,0,0);
+                if (autoTimer.seconds() > 0.4) {
+                    mecanumDrive(0,0,0);
+                    autoTimer.reset();
+                    autoState = AutoState.BACK2;
+                }
+                break;
+            case BACK2:
+                mecanumDrive(-1,0,0);
+                //From 0.8 to 0.75
+                //From 0.75 to 0.7
+                //From 0.7 to 0.75
+                if (autoTimer.seconds() > 0.75) {
+                    mecanumDrive(0,0,0);
+                    autoTimer.reset();
+                    autoState = AutoState.STRAFE2;
+                }
+                break;
+            case STRAFE2:
+                mecanumDrive(0,-1,0);
+                if (autoTimer.seconds() > 1) {
+                    mecanumDrive(0, 0, 0);
+                    autoTimer.reset();
+                    autoState = AutoState.ROTATE5;
+                }
+                break;
+            case ROTATE5:
+                mecanumDrive(0,0,-1);
+                //From 0.3 to 0.35
+                //From 0.35 to 0.35
+                //From 0.35 to 0.3
+                if (autoTimer.seconds() > 0.28) {
+                    mecanumDrive(0,0,0);
+                    autoTimer.reset();
+                    autoState = AutoState.SHOOT3;
+                }
+                break;
+            case SHOOT3:
+                shoot();
+                diverter.setPosition(0);
                 if (autoTimer.seconds() > 3){
                     stopFeeders();
                     stopLauncher();
