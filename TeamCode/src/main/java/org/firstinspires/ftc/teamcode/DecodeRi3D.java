@@ -47,8 +47,8 @@ public class DecodeRi3D extends OpMode {
     final double STOP_SPEED = 0.0; //We send this power to the servos when we want them to stop.
     final double FULL_SPEED = 1.0;
 
-    final double LAUNCHER_CLOSE_TARGET_VELOCITY = 1150; //in ticks/second for the close goal.
-    final double LAUNCHER_CLOSE_MIN_VELOCITY = 1125; //minimum required to start a shot for close goal.
+    final double LAUNCHER_CLOSE_TARGET_VELOCITY = 1140; //in ticks/second for the close goal.
+    final double LAUNCHER_CLOSE_MIN_VELOCITY = 1115; //minimum required to start a shot for close goal.
 
     final double LAUNCHER_FAR_TARGET_VELOCITY = 1400; //Target velocity for far goal
     final double LAUNCHER_FAR_MIN_VELOCITY = 1375; //minimum required to start a shot for far goal.
@@ -299,7 +299,7 @@ public class DecodeRi3D extends OpMode {
                     launcherDistance = LauncherDistance.MEDIUM;
                     launcherTarget = LAUNCHER_MEDIUM_TARGET_VELOCITY;
                     launcherMin = LAUNCHER_MEDIUM_MIN_VELOCITY;
-                    light.setPosition(0.333);
+                    light.setPosition(0.500);
                     break;
             }
         }

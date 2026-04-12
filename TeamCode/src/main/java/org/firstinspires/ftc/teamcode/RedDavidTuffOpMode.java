@@ -249,7 +249,7 @@ public class RedDavidTuffOpMode extends OpMode{
                 break;
             case ROTATE:
                 mecanumDrive(0,0, 1);
-                if (autoTimer.seconds() > 0.3) {
+                if (autoTimer.seconds() > 0.31) {
                     mecanumDrive(0,0, 0);
                     autoTimer.reset();
                     autoState = AutoState.WAIT;
@@ -272,7 +272,7 @@ public class RedDavidTuffOpMode extends OpMode{
                 break;
             case ROTATE2:
                 mecanumDrive(0,0,1);
-                if (autoTimer.seconds() > 0.2) {
+                if (autoTimer.seconds() > 0.25) {
                     mecanumDrive(0,0,0);
                     autoTimer.reset();
                     autoState = AutoState.GET;
@@ -288,7 +288,7 @@ public class RedDavidTuffOpMode extends OpMode{
                 break;*/
             case GET:
                 mecanumDrive(0.85,0,0);
-                if (autoTimer.seconds() > 0.4) {
+                if (autoTimer.seconds() > 0.43) {
                     mecanumDrive(0,0,0);
                     autoTimer.reset();
                     autoState = AutoState.DIVERT;
@@ -320,7 +320,7 @@ public class RedDavidTuffOpMode extends OpMode{
                 //From 0.8 to 0.75
                 //From 0.75 to 0.7
                 //From 0.7 to 0.75
-                if (autoTimer.seconds() > 0.8) {
+                if (autoTimer.seconds() > 0.75) {
                     mecanumDrive(0,0,0);
                     autoTimer.reset();
                     autoState = AutoState.ROTATE3;
@@ -331,7 +331,7 @@ public class RedDavidTuffOpMode extends OpMode{
                 //From 0.3 to 0.35
                 //From 0.35 to 0.35
                 //From 0.35 to 0.3
-                if (autoTimer.seconds() > 0.3) {
+                if (autoTimer.seconds() > 0.28) {
                     mecanumDrive(0,0,0);
                     autoTimer.reset();
                     autoState = AutoState.SHOOT2;
